@@ -1,0 +1,54 @@
+name: CareerLens Automation Trigger
+
+on:
+  repository_dispatch:
+    types: [apify-scrape-complete]
+  workflow_dispatch:
+    inputs:
+      dataset_id:
+        description: 'Test Apify Dataset ID'
+        required: false
+        default: 'test-dataset-id'
+      dataset_url:
+        description: 'Test Apify Dataset URL'
+        required: false
+        default: 'https://api.apify.com/v2/datasets/test-dataset-id/items?format=json'
+
+jobs:
+  apify-trigger-verification:
+    name: Verify Apify Dispatch Trigger
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Inspect & Validate Apify Payload
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ACTOR_ID: ${{ github.event.client_payload.actor_id || 'manual' }}
+          RUN_ID: ${{ github.event.client_payload.run_id || 'manual' }}
+          DATASET_ID: ${{ github.event.client_payload.dataset_id || inputs.dataset_id }}
+          DATASET_URL: ${{ github.event.client_payload.dataset_url || inputs.dataset_url }}
+        run: |
+          echo "=========================================================================="
+          echo "           CAREERLENS APIFY DISPATCH TRIGGER RECEIVED                     "
+          echo "=========================================================================="
+          echo "Trigger Event : ${EVENT_NAME}"
+          echo "Actor ID      : ${ACTOR_ID}"
+          echo "Run ID        : ${RUN_ID}"
+          echo "Dataset ID    : ${DATASET_ID}"
+          echo "Dataset URL   : ${DATASET_URL}"
+          echo "=========================================================================="
+          
+          if [ -z "${DATASET_ID}" ]; then
+            echo "::error::Dataset ID is missing from trigger payload!"
+            exit 1
+          fi
+          
+          echo "Apify dispatch trigger successfully received and validated."
