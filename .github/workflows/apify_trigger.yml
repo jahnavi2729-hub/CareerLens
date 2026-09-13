@@ -3,16 +3,13 @@ name: CareerLens Automation Trigger
 on:
   repository_dispatch:
     types: [apify-scrape-complete]
+
   workflow_dispatch:
     inputs:
       dataset_id:
         description: 'Test Apify Dataset ID'
         required: false
         default: 'test-dataset-id'
-      dataset_url:
-        description: 'Test Apify Dataset URL'
-        required: false
-        default: 'https://api.apify.com/v2/datasets/test-dataset-id/items?format=json'
 
 jobs:
   apify-trigger-verification:
@@ -34,21 +31,57 @@ jobs:
           ACTOR_ID: ${{ github.event.client_payload.actor_id || 'manual' }}
           RUN_ID: ${{ github.event.client_payload.run_id || 'manual' }}
           DATASET_ID: ${{ github.event.client_payload.dataset_id || inputs.dataset_id }}
-          DATASET_URL: ${{ github.event.client_payload.dataset_url || inputs.dataset_url }}
         run: |
           echo "=========================================================================="
-          echo "           CAREERLENS APIFY DISPATCH TRIGGER RECEIVED                     "
+          echo "           CAREERLENS APIFY DISPATCH TRIGGER RECEIVED"
           echo "=========================================================================="
           echo "Trigger Event : ${EVENT_NAME}"
           echo "Actor ID      : ${ACTOR_ID}"
           echo "Run ID        : ${RUN_ID}"
           echo "Dataset ID    : ${DATASET_ID}"
-          echo "Dataset URL   : ${DATASET_URL}"
           echo "=========================================================================="
-          
+
           if [ -z "${DATASET_ID}" ]; then
             echo "::error::Dataset ID is missing from trigger payload!"
             exit 1
           fi
-          
+
           echo "Apify dispatch trigger successfully received and validated."
+
+      - name: Download Apify Dataset
+        env:
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+          DATASET_ID: ${{ github.event.client_payload.dataset_id || inputs.dataset_id }}
+        run: |
+          mkdir -p data/raw
+
+          DATASET_URL="https://api.apify.com/v2/datasets/${DATASET_ID}/items?format=json&clean=true"
+
+          echo "Downloading Apify dataset..."
+          echo "Dataset ID: ${DATASET_ID}"
+
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${APIFY_API_TOKEN}" \
+            "${DATASET_URL}" \
+            --output data/raw/naukri_apify_ci.json
+
+          echo "Apify dataset downloaded successfully."
+
+          python - <<'PY'
+          import json
+
+          path = "data/raw/naukri_apify_ci.json"
+
+          with open(path, "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          if not isinstance(data, list):
+              raise ValueError("Apify dataset response is not a JSON list.")
+
+          print(f"Records downloaded: {len(data)}")
+
+          if len(data) == 0:
+              raise ValueError("Apify dataset is empty.")
+
+          print("Dataset download and basic validation: PASS")
+          PY
