@@ -1,0 +1,91 @@
+name: CareerLens CI/CD - Build & Render Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  repository_dispatch:
+    types: [apify-scrape-complete]
+  workflow_dispatch:
+    inputs:
+      dataset_id:
+        description: 'Test Apify Dataset ID'
+        required: false
+        default: 'test-dataset-id'
+      dataset_url:
+        description: 'Test Apify Dataset URL'
+        required: false
+        default: 'https://api.apify.com/v2/datasets/test-dataset-id/items?format=json'
+
+jobs:
+  verify-and-build:
+    name: Verify Payload & Build Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Inspect & Validate Trigger Payload
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ACTOR_ID: ${{ github.event.client_payload.actor_id || 'manual' }}
+          RUN_ID: ${{ github.event.client_payload.run_id || 'manual' }}
+          DATASET_ID: ${{ github.event.client_payload.dataset_id || inputs.dataset_id }}
+          DATASET_URL: ${{ github.event.client_payload.dataset_url || inputs.dataset_url }}
+        run: |
+          echo "=========================================================================="
+          echo "           CAREERLENS CI/CD DISPATCH / PUSH TRIGGER RECEIVED             "
+          echo "=========================================================================="
+          echo "Trigger Event : ${EVENT_NAME}"
+          echo "Actor ID      : ${ACTOR_ID}"
+          echo "Run ID        : ${RUN_ID}"
+          echo "Dataset ID    : ${DATASET_ID}"
+          echo "Dataset URL   : ${DATASET_URL}"
+          echo "=========================================================================="
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image (Sanity Check)
+        run: |
+          echo "Building CareerLens Docker container image..."
+          docker build -t careerlens:latest .
+          echo "Docker image build completed successfully!"
+
+  deploy-to-render:
+    name: Deploy to Render Web Service
+    needs: verify-and-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Deployment Hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK secret is not configured in GitHub Repository Secrets."
+            echo "Skipping automatic Render deployment trigger step."
+            exit 0
+          fi
+
+          echo "Sending deployment trigger to Render..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_DEPLOY_HOOK")
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Render Response HTTP Status: $HTTP_STATUS"
+          echo "Render Response Body: $BODY"
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Render deployment hook successfully triggered!"
+          else
+            echo "::error::Failed to trigger Render deployment. HTTP Status: $HTTP_STATUS"
+            exit 1
+          fi
