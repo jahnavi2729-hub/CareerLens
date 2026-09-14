@@ -13,7 +13,9 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir uvicorn fastapi pypdf python-docx python-multipart python-dotenv openai && \
+    python -c "import uvicorn; print('uvicorn installation verified:', uvicorn.__file__)"
 
 # Copy application source code, helper scripts, and static frontend files
 COPY src/ ./src/
