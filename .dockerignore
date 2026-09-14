@@ -1,0 +1,23 @@
+# Python environment and cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Secrets and environment files (NEVER expose in Docker build context)
+.env
+groq.env
+secrets.json
+
+# Git and IDE
+.git/
+.gitignore
+.pytest_cache/
+.vscode/
+
+# Logs and temp files
+logs/
+*.log
+scratch/
