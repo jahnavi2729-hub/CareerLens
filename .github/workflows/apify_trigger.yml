@@ -11,6 +11,11 @@ on:
         required: false
         default: 'test-dataset-id'
 
+      dataset_url:
+        description: 'Test Apify Dataset URL'
+        required: false
+        default: 'https://api.apify.com/v2/datasets/test-dataset-id/items?format=json'
+
 jobs:
   apify-trigger-verification:
     name: Verify Apify Dispatch Trigger
@@ -31,6 +36,7 @@ jobs:
           ACTOR_ID: ${{ github.event.client_payload.actor_id || 'manual' }}
           RUN_ID: ${{ github.event.client_payload.run_id || 'manual' }}
           DATASET_ID: ${{ github.event.client_payload.dataset_id || inputs.dataset_id }}
+          DATASET_URL: ${{ github.event.client_payload.dataset_url || inputs.dataset_url }}
         run: |
           echo "=========================================================================="
           echo "           CAREERLENS APIFY DISPATCH TRIGGER RECEIVED"
@@ -39,6 +45,7 @@ jobs:
           echo "Actor ID      : ${ACTOR_ID}"
           echo "Run ID        : ${RUN_ID}"
           echo "Dataset ID    : ${DATASET_ID}"
+          echo "Dataset URL   : ${DATASET_URL}"
           echo "=========================================================================="
 
           if [ -z "${DATASET_ID}" ]; then
@@ -53,6 +60,12 @@ jobs:
           APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
           DATASET_ID: ${{ github.event.client_payload.dataset_id || inputs.dataset_id }}
         run: |
+          if [[ "${DATASET_ID}" == *"{{"* ]]; then
+            echo "Test webhook detected — no real dataset ID available."
+            echo "Skipping dataset download."
+            exit 0
+          fi
+
           mkdir -p data/raw
 
           DATASET_URL="https://api.apify.com/v2/datasets/${DATASET_ID}/items?format=json&clean=true"
