@@ -15,10 +15,25 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source code, datasets, and static frontend files
+# Copy application source code, helper scripts, and static frontend files
 COPY src/ ./src/
-COPY data/ ./data/
+COPY download_full.py ./
 COPY careerlens.html market.html career-fit.html ./
+
+# Copy data directory (contains gitkept folders or generated dataset)
+COPY data/ ./data/
+
+# Ensure dataset exists inside container: if jobs_clean.csv is missing, generate it during build
+RUN python -c "\
+import os, subprocess, sys; \
+csv_path = os.path.join('data', 'processed', 'jobs_clean.csv'); \
+if not os.path.exists(csv_path) or os.path.getsize(csv_path) == 0: \
+    print('jobs_clean.csv missing. Generating dataset in Docker build...'); \
+    subprocess.run([sys.executable, 'download_full.py'], check=True); \
+    subprocess.run([sys.executable, '-m', 'src.preprocessing'], check=True); \
+else: \
+    print('Dataset data/processed/jobs_clean.csv verified.'); \
+"
 
 # Expose FastAPI server port
 EXPOSE 8000

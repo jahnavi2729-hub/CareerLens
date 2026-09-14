@@ -50,6 +50,37 @@ jobs:
           echo "Dataset URL   : ${DATASET_URL}"
           echo "=========================================================================="
 
+      - name: Prepare Dataset for Docker Build
+        env:
+          DATASET_URL: ${{ github.event.client_payload.dataset_url || inputs.dataset_url }}
+        run: |
+          echo "=========================================================================="
+          echo "            PREPARING DATASET FOR DOCKER BUILD CONTEXT                    "
+          echo "=========================================================================="
+          mkdir -p data/raw data/processed
+          
+          if [ -f "data/processed/jobs_clean.csv" ]; then
+            echo "data/processed/jobs_clean.csv already exists. Skipping download."
+          else
+            echo "data/processed/jobs_clean.csv not found (gitignored). Generating dataset..."
+            pip install pandas numpy
+            
+            if [ -n "$DATASET_URL" ] && [[ "$DATASET_URL" =~ ^https?:// ]] && [[ "$DATASET_URL" != *"test-dataset-id"* ]]; then
+              echo "Downloading incoming dataset from URL: $DATASET_URL"
+              curl -sSL "$DATASET_URL" -o data/raw/jobs_raw.json
+            else
+              echo "Downloading full baseline dataset via download_full.py..."
+              python download_full.py
+            fi
+            
+            echo "Running preprocessing pipeline to generate jobs_clean.csv..."
+            python -m src.preprocessing
+          fi
+          
+          echo "=========================================================================="
+          echo "Dataset verified successfully:"
+          ls -lh data/processed/jobs_clean.csv
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
