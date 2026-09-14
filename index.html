@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Market Intelligence — System Status & Logs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: rgba(23, 31, 51, 0.75);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-yellow: #f59e0b;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.15) 0%, transparent 40%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; }
+    .status-pulse {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 12px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.9); } }
+    h1 { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #fff, #9ca3af); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .refresh-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+    
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+    }
+    .stat-label { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem; color: #fff; }
+    .stat-subtext { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .section-title { font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    
+    .log-select-wrapper { display: flex; align-items: center; gap: 0.5rem; }
+    .log-select-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
+    .log-select {
+      background: #131b2e;
+      border: 1px solid var(--accent-blue);
+      color: #fff;
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      cursor: pointer;
+      outline: none;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+    }
+    .log-select:focus { border-color: var(--accent-purple); box-shadow: 0 0 12px rgba(139, 92, 246, 0.3); }
+
+    .logs-container { display: flex; flex-direction: column; gap: 1.5rem; }
+    .log-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      display: none;
+    }
+    .log-card.active { display: block; }
+
+    .log-header {
+      padding: 1rem 1.25rem;
+      background: rgba(0,0,0,0.3);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .log-title { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--accent-blue); }
+    .log-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 1rem; }
+    
+    .metrics-pills {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 1rem 1.25rem;
+      background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-color);
+    }
+    .pill {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-color);
+      padding: 0.35rem 0.7rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+    }
+    .pill strong { color: #fff; }
+    
+    .error-box {
+      margin: 1rem 1.25rem;
+      padding: 1rem;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+    }
+    .error-box-title { font-size: 0.85rem; font-weight: 600; color: var(--accent-red); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
+    .error-line { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: #fca5a5; margin-bottom: 0.25rem; word-break: break-all; }
+    
+    .log-viewer {
+      padding: 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: #d1d5db;
+      background: #060911;
+      max-height: 380px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-line-error { color: var(--accent-red); font-weight: 600; }
+    .log-line-warning { color: var(--accent-yellow); }
+    .log-line-info { color: #9ca3af; }
+
+    .no-logs {
+      padding: 3rem; text-align: center; color: var(--text-muted);
+      background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="status-pulse"></div>
+        <h1>Job Market Intelligence — System Status</h1>
+      </div>
+      <button class="refresh-btn" onclick="window.location.reload()">🔄 Refresh Dashboard</button>
+    </header>
+
+    <!-- Top Stats Row -->
+    <div class="grid-stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Jobs in DB</div>
+        <div class="stat-value">40,847</div>
+        <div class="stat-subtext">Live D1 SQL Database Records</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Latest Scraped</div>
+        <div class="stat-value" id="card-jobs">0</div>
+        <div class="stat-subtext">Jobs extracted in run</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pages Scraped</div>
+        <div class="stat-value" id="card-pages">1</div>
+        <div class="stat-subtext">Target search pages parsed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Duplicates Bypassed</div>
+        <div class="stat-value" id="card-duplicates">0</div>
+        <div class="stat-subtext">Existing DB records detected</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Insert Success</div>
+        <div class="stat-value" id="card-inserts" style="color: var(--accent-green);">0</div>
+        <div class="stat-subtext" id="card-fails">Failed: 0</div>
+      </div>
+    </div>
+
+    <!-- Latest Scraper Logs Section Header with Dropdown -->
+    <div class="section-header">
+      <h2 class="section-title">📜 Scraper Log Viewer</h2>
+      
+        <div class="log-select-wrapper">
+          <label class="log-select-label" for="logSelect">Choose Log File:</label>
+          <select id="logSelect" class="log-select" onchange="switchLog(this.value)">
+            
+              <option value="log-card-0">
+                📅 2026-09-06 09:36:15 | Run #1 (Scheduled Cloud) (9/6/2026, 9:36:51 AM)
+              </option>
+            
+              <option value="log-card-1">
+                📅 2026-09-05 19:16:08 | Run #2 (Scheduled Cloud) (9/5/2026, 7:16:13 PM)
+              </option>
+            
+          </select>
+        </div>
+      
+    </div>
+
+    <div class="logs-container">
+      
+        <div id="log-card-0" class="log-card active">
+          <div class="log-header">
+            <span class="log-title">📁 Run #1: scraper_logs/2026-09-06_09-36-15_scheduled_run34025068315.txt</span>
+            <div class="log-meta">
+              <span>Uploaded: 9/6/2026, 9:36:51 AM</span>
+              <span>Size: 1.0 KB</span>
+            </div>
+          </div>
+
+          <div class="metrics-pills">
+            <div class="pill">Pages: <strong>1</strong></div>
+            <div class="pill">Jobs Extracted: <strong>0</strong></div>
+            <div class="pill">Duplicates Bypassed: <strong>0</strong></div>
+            <div class="pill">DB Inserted: <strong>0</strong></div>
+            <div class="pill">DB Failed: <strong>0</strong></div>
+            <div class="pill">Runtime: <strong>Live...</strong></div>
+          </div>
+
+          
+
+          <div class="log-viewer">[199] <span class="log-line-info">[INFO] [2026-09-06 09:36:16] main.py: === Job Market Intelligence v3 Cloud Scraper Started ===</span>
+[216] <span class="log-line-info">[INFO] [2026-09-06 09:36:16] main.py: 📋 Cloud Configuration Loaded:</span>
+[217] <span class="log-line-info">[INFO] [2026-09-06 09:36:16] main.py:    • Target City: Bangalore</span>
+[218] <span class="log-line-info">[INFO] [2026-09-06 09:36:16] main.py:    • Run Mode: ▶️ Normal / Same-day Resume</span>
+[219] <span class="log-line-info">[INFO] [2026-09-06 09:36:16] main.py:    • Storage Target: DB</span>
+[220] <span class="log-line-info">[INFO] [2026-09-06 09:36:16] main.py:    • Cloud Hardware Detected: 2 CPU Cores -&gt; Using 2 Parallel Worker Threads</span>
+[221] <span class="log-line-info">[INFO] [2026-09-06 09:36:16] main.py:    • Container Memory (RAM): Total RAM: 7.75 GB | Used: 0.98 GB (12.6%) | Available: 6.78 GB</span>
+[224] <span class="log-line-info">[INFO] [2026-09-06 09:36:16] main.py: Cloudflare D1 database client initialized successfully.</span>
+[234] <span class="log-line-info">[INFO] [2026-09-06 09:36:17] main.py: 📊 BEFORE Scrape Total Database Records: 40,847</span>
+[112] <span class="log-line-info">[INFO] [2026-09-06 09:36:22] naukri.py: Loaded 40847 URLs and 40847 Hash IDs from Database (Source of Truth).</span>
+</div>
+        </div>
+      
+        <div id="log-card-1" class="log-card ">
+          <div class="log-header">
+            <span class="log-title">📁 Run #2: scraper_logs/2026-09-05_19-16-08_scheduled_run33986561935.txt</span>
+            <div class="log-meta">
+              <span>Uploaded: 9/5/2026, 7:16:13 PM</span>
+              <span>Size: 0.9 KB</span>
+            </div>
+          </div>
+
+          <div class="metrics-pills">
+            <div class="pill">Pages: <strong>1</strong></div>
+            <div class="pill">Jobs Extracted: <strong>0</strong></div>
+            <div class="pill">Duplicates Bypassed: <strong>0</strong></div>
+            <div class="pill">DB Inserted: <strong>0</strong></div>
+            <div class="pill">DB Failed: <strong>0</strong></div>
+            <div class="pill">Runtime: <strong>Live...</strong></div>
+          </div>
+
+          
+
+          <div class="log-viewer">[199] <span class="log-line-info">[INFO] [2026-09-05 19:16:09] main.py: === Job Market Intelligence v3 Cloud Scraper Started ===</span>
+[216] <span class="log-line-info">[INFO] [2026-09-05 19:16:09] main.py: 📋 Cloud Configuration Loaded:</span>
+[217] <span class="log-line-info">[INFO] [2026-09-05 19:16:09] main.py:    • Target City: Bangalore</span>
+[218] <span class="log-line-info">[INFO] [2026-09-05 19:16:09] main.py:    • Run Mode: ▶️ Normal / Same-day Resume</span>
+[219] <span class="log-line-info">[INFO] [2026-09-05 19:16:09] main.py:    • Storage Target: DB</span>
+[220] <span class="log-line-info">[INFO] [2026-09-05 19:16:09] main.py:    • Cloud Hardware Detected: 2 CPU Cores -&gt; Using 2 Parallel Worker Threads</span>
+[221] <span class="log-line-info">[INFO] [2026-09-05 19:16:09] main.py:    • Container Memory (RAM): Total RAM: 7.75 GB | Used: 1.16 GB (14.9%) | Available: 6.60 GB</span>
+[224] <span class="log-line-info">[INFO] [2026-09-05 19:16:09] main.py: Cloudflare D1 database client initialized successfully.</span>
+[234] <span class="log-line-info">[INFO] [2026-09-05 19:16:11] main.py: 📊 BEFORE Scrape Total Database Records: 40,847</span>
+</div>
+        </div>
+      
+    </div>
+  </div>
+
+  <script>
+    const logsData = [{"pages":"1","jobs_scraped":"0","duplicates":"0","insert_success":"0","insert_fail":"0","runtime":"Live..."},{"pages":"1","jobs_scraped":"0","duplicates":"0","insert_success":"0","insert_fail":"0","runtime":"Live..."}];
+    function switchLog(selectedCardId) {
+      document.querySelectorAll('.log-card').forEach(card => {
+        card.classList.remove('active');
+      });
+      const targetCard = document.getElementById(selectedCardId);
+      if (targetCard) {
+        targetCard.classList.add('active');
+      }
+
+      const idx = parseInt(selectedCardId.replace('log-card-', ''), 10);
+      if (!isNaN(idx) && logsData[idx]) {
+        const m = logsData[idx];
+        document.getElementById('card-jobs').textContent = m.jobs_scraped || '0';
+        document.getElementById('card-pages').textContent = m.pages || '0';
+        document.getElementById('card-duplicates').textContent = m.duplicates || '0';
+        document.getElementById('card-inserts').textContent = m.insert_success || '0';
+        document.getElementById('card-fails').textContent = 'Failed: ' + (m.insert_fail || '0');
+      }
+    }
+  </script>
+</body>
+</html>

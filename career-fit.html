@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume Analysis | CareerLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0b0f; --bg2: #111218; --bg3: #16181f;
+      --surface: #1c1e27;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+      --accent: #6366f1; --accent-lt: #818cf8; --accent-dk: #4f46e5;
+      --green: #4ade80; --yellow: #fbbf24; --red: #f87171;
+      --text: #eceef5; --text-2: #a0a6bc; --text-3: #606580;
+      --r: 12px; --r-sm: 8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; height: 60px; border-bottom: 1px solid var(--border); background: rgba(10,11,15,0.75); position: sticky; top: 0; z-index: 200; }
+    .nav-left a { color: var(--text-3); text-decoration: none; font-size: 0.85rem; }
+    .nav-center { background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; }
+    
+    .container { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .hidden { display: none !important; }
+
+    /* UPLOAD STATE */
+    #uploadState { max-width: 540px; margin: 0 auto; text-align: center; }
+    .upload-h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    .upload-sub { color: var(--text-2); font-size: 0.95rem; margin-bottom: 2rem; }
+    .dropzone {
+      border: 2px dashed var(--border2); border-radius: 18px; padding: 3rem 2rem;
+      cursor: pointer; transition: all 0.2s; margin-bottom: 1rem;
+    }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(99,102,241,0.05); }
+    .btn-analyze {
+      width: 100%; height: 52px; background: var(--accent); color: #fff; border: none; border-radius: var(--r);
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 1rem;
+    }
+    .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-analyze:not(:disabled):hover { background: var(--accent-dk); }
+
+    /* RESULTS STATE */
+    .hero-section { display: flex; align-items: center; gap: 2rem; margin-bottom: 3rem; }
+    @media (max-width: 600px) { .hero-section { flex-direction: column; text-align: center; } }
+    
+    .gauge-container { position: relative; width: 160px; height: 160px; }
+    .gauge-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.8rem; font-weight: 700; }
+    .gauge-lbl { position: absolute; top: 70%; left: 50%; transform: translate(-50%, -50%); font-size: 0.7rem; color: var(--text-3); text-transform: uppercase; }
+    
+    .summary-text h2 { font-size: 1.5rem; margin-bottom: 8px; }
+    .summary-text p { color: var(--text-2); margin-bottom: 4px; font-size: 0.95rem; }
+    .exp-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; margin-top: 8px; }
+
+    .section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .section-title { font-size: 1.2rem; font-weight: 600; }
+    .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .badge-green { background: rgba(74,222,128,0.1); color: var(--green); }
+    .badge-orange { background: rgba(251,191,36,0.1); color: var(--yellow); }
+
+    .skills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 3rem; }
+    .skill-pill {
+      background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25);
+      border-radius: var(--r-sm); padding: 8px 12px; display: flex; justify-content: space-between;
+      font-size: 0.85rem;
+    }
+    
+    .gap-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .gap-row.top-3 { border-left: 3px solid var(--red); padding-left: 10px; margin-left: -13px; }
+    .gap-rank { width: 28px; height: 28px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--text-3); }
+    .gap-row.top-3 .gap-rank { background: rgba(99,102,241,0.2); color: var(--accent-lt); }
+    .gap-name { flex: 1; font-size: 0.9rem; }
+    .gap-row.top-3 .gap-name { font-weight: 600; }
+    .gap-bar-track { width: 120px; height: 5px; background: var(--surface); border-radius: 3px; }
+    .gap-bar-fill { height: 100%; border-radius: 3px; width: 0; transition: width 0.8s ease; }
+    
+    .exp-cards { display: flex; gap: 12px; margin-bottom: 1rem; }
+    @media (max-width: 600px) { .exp-cards { flex-direction: column; } }
+    .exp-card { flex: 1; background: var(--surface); border: 1px solid var(--border); padding: 1rem; border-radius: var(--r); }
+    .exp-lbl { font-size: 0.7rem; color: var(--text-3); text-transform: uppercase; margin-bottom: 4px; }
+    .exp-val { font-size: 1.4rem; font-weight: 700; }
+    .status-banner { padding: 0.6rem 1rem; border-radius: var(--r-sm); font-size: 0.85rem; font-weight: 500; margin-bottom: 3rem; }
+
+    .actions { display: flex; gap: 12px; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 2rem; }
+    .btn-sec { padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); text-decoration: none; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-left"><a href="#" id="navBack">← Market Intel</a></div>
+  <div class="nav-center" id="navRole">Role</div>
+  <div class="nav-right"></div>
+</nav>
+
+<div class="container">
+  
+  <!-- STATE 1: UPLOAD -->
+  <div id="uploadState">
+    <h1 class="upload-h1">Analyze your resume</h1>
+    <p class="upload-sub">Upload your resume and see how you match against real job postings.</p>
+    
+    <div class="dropzone" id="dropzone">
+      <div id="dropzoneContent">
+        <svg width="40" height="40" fill="none" stroke="var(--text-3)" stroke-width="2" viewBox="0 0 24 24" style="margin-bottom:8px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        <div style="font-size:1rem;color:var(--text-2);">Drop your resume here</div>
+        <div style="font-size:0.8rem;color:var(--text-3);margin-top:4px;">or click to browse &middot; PDF, DOCX, or TXT &middot; max 5 MB</div>
+      </div>
+    </div>
+    <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt" />
+    
+    <div id="errorBanner" class="hidden" style="padding:10px; background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); color:var(--red); border-radius:8px; margin-bottom:1rem; font-size:0.85rem;"></div>
+    
+    <button id="analyzeBtn" class="btn-analyze" disabled>Analyze My Resume</button>
+    <p style="font-size:0.75rem; color:var(--text-3); margin-top:12px;">Your resume is processed locally. Nothing is sent to external servers.</p>
+  </div>
+
+  <!-- STATE 2: RESULTS -->
+  <div id="resultsState" class="hidden">
+    
+    <div class="hero-section">
+      <div class="gauge-container">
+        <svg width="160" height="160" viewBox="0 0 160 160">
+          <circle cx="80" cy="80" r="64" fill="none" stroke="var(--surface)" stroke-width="12" stroke-dasharray="402 402" transform="rotate(-90 80 80)"/>
+          <circle id="gaugeArc" cx="80" cy="80" r="64" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="402 402" stroke-dashoffset="402" transform="rotate(-90 80 80)" style="transition: stroke-dashoffset 1.2s ease, stroke 0.3s"/>
+        </svg>
+        <div class="gauge-val" id="fitVal">0%</div>
+        <div class="gauge-lbl">Market Fit</div>
+      </div>
+      <div class="summary-text">
+        <h2 id="resRole">Data Engineer</h2>
+        <p id="resSkills">Matched 0 of 0 evaluated skills</p>
+        <p id="resPostings">Across 0 real job postings</p>
+        <div class="exp-badge" id="resExpBadge">0 yrs exp</div>
+      </div>
+    </div>
+
+    <!-- CAREER MENTOR ADVICE CARD -->
+    <div id="mentorCard" class="hidden" style="background:var(--surface); border:1px solid rgba(99,102,241,0.3); border-radius:var(--r); padding:1.5rem; margin-bottom:2.5rem; position:relative;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="background:rgba(99,102,241,0.2); color:var(--accent-lt); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.9rem;">✨</span>
+          <h3 id="mentorHeadline" style="font-size:1.1rem; font-weight:600;">Career Mentor Guidance</h3>
+        </div>
+        <span id="mentorBadge" style="font-size:0.75rem; background:rgba(255,255,255,0.05); color:var(--text-3); padding:3px 8px; border-radius:10px;">Groq AI Mentor</span>
+      </div>
+      <div id="mentorContent" style="font-size:0.9rem; line-height:1.6; color:var(--text-2); white-space:pre-line;"></div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Skills you already have</div>
+      <div class="badge badge-green" id="matchedCountBadge">0 skills</div>
+    </div>
+    <div class="skills-grid" id="matchedGrid"></div>
+
+    <div class="section-header" style="margin-top:2rem;">
+      <div class="section-title">Top Actionable Opportunities</div>
+      <div class="badge badge-orange" id="gapsCountBadge">0 opportunities</div>
+    </div>
+    <div style="font-size:0.85rem; color:var(--text-3); margin-top:-10px; margin-bottom:1rem;">Top 3 high-impact skills to focus on, ranked deterministically by employer demand</div>
+    <div id="gapsList" style="margin-bottom:3rem;"></div>
+
+    <div class="section-title" style="margin-bottom:1rem;">Experience check</div>
+    <div class="exp-cards">
+      <div class="exp-card"><div class="exp-lbl">Your experience</div><div class="exp-val" id="expCandidate">0 yrs</div></div>
+      <div class="exp-card"><div class="exp-lbl">Market median</div><div class="exp-val" id="expMedian">0 yrs min</div></div>
+      <div class="exp-card"><div class="exp-lbl">Range</div><div class="exp-val" id="expRange">0-0 yrs</div></div>
+    </div>
+    <div class="status-banner" id="expStatusBanner">Status</div>
+
+    <div class="actions">
+      <a href="#" class="btn-sec" onclick="resetUpload(event)">← Try another resume</a>
+      <a href="#" class="btn-sec" id="exploreMarketLnk">Explore Market →</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API_BASE = 'http://localhost:8000';
+  const urlParams = new URLSearchParams(window.location.search);
+  const role = urlParams.get('role');
+  if (!role) window.location.href = 'careerlens.html';
+  
+  document.getElementById('navRole').textContent = role;
+  document.getElementById('navBack').href = `market.html?role=${encodeURIComponent(role)}`;
+  document.getElementById('exploreMarketLnk').href = `market.html?role=${encodeURIComponent(role)}`;
+
+  let selectedFile = null;
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const errorBanner = document.getElementById('errorBanner');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault(); dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault(); dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+  });
+
+  function handleFile(file) {
+    errorBanner.classList.add('hidden');
+    if (file.size > 5 * 1024 * 1024) {
+      showError("File is too large. Max size is 5 MB.");
+      return;
+    }
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'docx', 'txt'].includes(ext)) {
+      showError("Unsupported file type. Use PDF, DOCX, or TXT.");
+      return;
+    }
+    selectedFile = file;
+    document.getElementById('dropzoneContent').innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+        <svg width="24" height="24" fill="none" stroke="var(--accent)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span style="font-weight:500;">${file.name}</span>
+        <button onclick="clearFile(event)" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:1.2rem;margin-left:8px;">&times;</button>
+      </div>
+    `;
+    analyzeBtn.disabled = false;
+  }
+
+  function clearFile(e) {
+    if(e) e.stopPropagation();
+    selectedFile = null;
+    fileInput.value = '';
+    analyzeBtn.disabled = true;
+    document.getElementById('dropzoneContent').innerHTML = `
+        <svg width="40" height="40" fill="none" stroke="var(--text-3)" stroke-width="2" viewBox="0 0 24 24" style="margin-bottom:8px;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        <div style="font-size:1rem;color:var(--text-2);">Drop your resume here</div>
+        <div style="font-size:0.8rem;color:var(--text-3);margin-top:4px;">or click to browse &middot; PDF, DOCX, or TXT &middot; max 5 MB</div>
+    `;
+  }
+
+  function showError(msg) {
+    errorBanner.textContent = msg;
+    errorBanner.classList.remove('hidden');
+  }
+
+  analyzeBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = 'Analyzing...';
+    errorBanner.classList.add('hidden');
+
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+    fd.append('target_role', role);
+
+    try {
+      const res = await fetch(`${API_BASE}/career-fit`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Analysis failed');
+      renderResults(data);
+      document.getElementById('uploadState').classList.add('hidden');
+      document.getElementById('resultsState').classList.remove('hidden');
+    } catch (err) {
+      showError(err.message);
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = 'Analyze My Resume';
+    }
+  });
+
+  function renderResults(data) {
+    // Hero
+    document.getElementById('resRole').textContent = data.target_role;
+    document.getElementById('resSkills').textContent = `Matched ${data.matched_skills.length} of ${data.evaluated_skill_count} evaluated skills`;
+    document.getElementById('resPostings').textContent = `Across ${data.posting_denominator} real job postings`;
+    
+    const ea = data.experience_alignment;
+    const badge = document.getElementById('resExpBadge');
+    badge.textContent = `${ea.candidate_exp_years} yrs exp · ${ea.status}`;
+    let colorVar = ea.status.includes('Below') ? 'var(--yellow)' : (ea.status.includes('Above') ? 'var(--green)' : 'var(--text-3)');
+    let bgVar = ea.status.includes('Below') ? 'rgba(251,191,36,0.1)' : (ea.status.includes('Above') ? 'rgba(74,222,128,0.1)' : 'var(--surface)');
+    badge.style.color = colorVar;
+    badge.style.background = bgVar;
+
+    // Gauge Animate
+    let pct = data.market_fit_pct;
+    let gaugeColor = pct < 40 ? 'var(--red)' : (pct < 65 ? 'var(--yellow)' : 'var(--green)');
+    const arc = document.getElementById('gaugeArc');
+    arc.style.stroke = gaugeColor;
+    setTimeout(() => { arc.style.strokeDashoffset = 402 * (1 - pct/100); }, 50);
+    
+    let elPct = document.getElementById('fitVal');
+    let start = null;
+    function anim(t) {
+      if(!start) start = t;
+      let p = Math.min((t - start) / 1200, 1);
+      elPct.textContent = Math.round(p * pct) + '%';
+      if(p < 1) requestAnimationFrame(anim);
+    }
+    requestAnimationFrame(anim);
+
+    // Career Mentor Feedback
+    if (data.career_mentor_feedback) {
+      const mf = data.career_mentor_feedback;
+      document.getElementById('mentorHeadline').textContent = mf.headline || `Career Mentor Guidance for ${data.target_role}`;
+      document.getElementById('mentorBadge').textContent = mf.llm_provider || (mf.is_llm_generated ? 'Groq AI Mentor' : 'Career Advisor');
+      document.getElementById('mentorContent').textContent = mf.full_text;
+      document.getElementById('mentorCard').classList.remove('hidden');
+    }
+
+    // Matched Skills
+    document.getElementById('matchedCountBadge').textContent = `${data.matched_skills.length} skills`;
+    const sortedMatched = [...data.matched_skills].sort((a,b) => b.demand_pct - a.demand_pct);
+    document.getElementById('matchedGrid').innerHTML = sortedMatched.map(s => `
+      <div class="skill-pill">
+        <span style="color:var(--text);"><span style="color:var(--green);margin-right:4px;">✓</span>${s.skill}</span>
+        <span style="color:var(--green);">${s.demand_pct.toFixed(1)}%</span>
+      </div>
+    `).join('');
+
+    // Priority Gaps (Top 3 Actionable Opportunities)
+    const topGaps = [...(data.missing_skills || [])].sort((a,b) => b.demand_pct - a.demand_pct).slice(0, 3);
+    document.getElementById('gapsCountBadge').textContent = `${topGaps.length} top ${topGaps.length === 1 ? 'opportunity' : 'opportunities'}`;
+    const maxGap = topGaps.length ? topGaps[0].demand_pct : 1;
+    
+    document.getElementById('gapsList').innerHTML = topGaps.map((s, i) => {
+      let barColor = 'var(--red)';
+      return `
+      <div class="gap-row top-3">
+        <div class="gap-rank">${s.priority_rank || (i+1)}</div>
+        <div class="gap-name">${s.skill}</div>
+        <div class="gap-bar-track"><div class="gap-bar-fill" data-w="${(s.demand_pct/maxGap)*100}%" style="background:${barColor};"></div></div>
+        <div style="width:44px;text-align:right;font-size:0.82rem;color:var(--text-2);">${s.demand_pct.toFixed(1)}%</div>
+        <div style="width:56px;text-align:right;font-size:0.75rem;color:var(--text-3);">${s.posting_count} jobs</div>
+      </div>
+      `;
+    }).join('');
+    
+    setTimeout(() => {
+      document.querySelectorAll('.gap-bar-fill').forEach(el => el.style.width = el.dataset.w);
+    }, 50);
+
+    // Experience
+    document.getElementById('expCandidate').textContent = `${ea.candidate_exp_years} yrs`;
+    document.getElementById('expMedian').textContent = `${ea.market_median_min_exp_years} yrs min`;
+    document.getElementById('expRange').textContent = `${ea.market_min_exp_years}-${ea.market_max_exp_years} yrs`;
+    
+    const statusBanner = document.getElementById('expStatusBanner');
+    statusBanner.textContent = ea.status;
+    statusBanner.style.color = colorVar;
+    statusBanner.style.background = bgVar;
+    if(ea.status.includes('Below')) statusBanner.style.border = '1px solid rgba(251,191,36,0.3)';
+    else if(ea.status.includes('Above')) statusBanner.style.border = '1px solid rgba(74,222,128,0.3)';
+    else statusBanner.style.border = '1px solid var(--border)';
+  }
+
+  function resetUpload(e) {
+    if(e) e.preventDefault();
+    clearFile();
+    analyzeBtn.textContent = 'Analyze My Resume';
+    document.getElementById('resultsState').classList.add('hidden');
+    document.getElementById('uploadState').classList.remove('hidden');
+  }
+</script>
+</body>
+</html>
