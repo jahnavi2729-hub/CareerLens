@@ -9,6 +9,7 @@ env/
 # Secrets
 .env
 secrets.json
+groq.env
 
 # Jupyter Notebooks
 .ipynb_checkpoints/

@@ -30,6 +30,7 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import Optional, Any
 
 import pandas as pd
 
@@ -111,6 +112,75 @@ def compute_company_stats(df: pd.DataFrame) -> dict:
             "skill_distribution": skill_stats,
         }
     return result
+
+
+
+def get_company_hiring_intelligence(
+    target_role: str,
+    csv_path: Optional[Any] = None
+) -> dict:
+    """
+    Computes hiring volume per company and normalized skill demand for a target role.
+    Reuses load_jobs_data and normalized tokenise_skills from comparison_engine.
+    """
+    try:
+        from src.comparison_engine import load_jobs_data, tokenise_skills as normalized_tokenise
+    except ImportError:
+        from comparison_engine import load_jobs_data, tokenise_skills as normalized_tokenise
+
+    df_all = load_jobs_data(csv_path)
+    if "role_clean" not in df_all.columns:
+        raise KeyError("Column 'role_clean' not found in jobs dataset.")
+
+    df_role = df_all[df_all["role_clean"].str.contains(target_role, case=False, na=False)].copy()
+    total_postings = len(df_role)
+
+    if total_postings == 0:
+        return {
+            "target_role": target_role,
+            "total_postings": 0,
+            "total_companies": 0,
+            "companies": []
+        }
+
+    company_col = "company_name_clean" if "company_name_clean" in df_role.columns else "company_name"
+    df_role["company"] = df_role[company_col].fillna("Unknown Company")
+
+    postings_per_company = df_role.groupby("company").size().to_dict()
+    company_counters: dict[str, Counter] = {comp: Counter() for comp in postings_per_company}
+
+    for company, skills_raw in df_role[["company", "key_skills_clean"]].itertuples(index=False):
+        skills = set(normalized_tokenise(skills_raw))
+        company_counters[company].update(skills)
+
+    companies_list = []
+    for company, postings in postings_per_company.items():
+        counter = company_counters[company]
+        skill_stats = [
+            {
+                "skill": skill,
+                "posting_count": count,
+                "demand_pct": round((count / postings) * 100, 2) if postings else 0.0,
+            }
+            for skill, count in sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))
+        ]
+        companies_list.append({
+            "company_name": company,
+            "posting_count": postings,
+            "posting_share_pct": round((postings / total_postings) * 100, 2) if total_postings else 0.0,
+            "top_skills": skill_stats
+        })
+
+    # Deterministic sorting: posting_count DESC, company_name ASC
+    companies_list.sort(key=lambda c: (-c["posting_count"], c["company_name"]))
+
+    return {
+        "target_role": target_role,
+        "total_postings": total_postings,
+        "total_companies": len(companies_list),
+        "companies": companies_list
+    }
+
 
 # ---------------------------------------------------------------------------
 # Script entry point
