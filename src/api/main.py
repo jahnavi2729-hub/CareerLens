@@ -2,9 +2,13 @@
 CareerLens API Application Entrypoint
 """
 
+from pathlib import Path
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 try:
     from src.comparison_engine import (
@@ -55,6 +59,21 @@ def health_check():
         "status": "healthy",
         "service": "CareerLens API"
     }
+
+@app.get("/", response_class=FileResponse)
+def serve_index():
+    path = BASE_DIR / "careerlens.html"
+    return FileResponse(path if path.exists() else "careerlens.html")
+
+@app.get("/market.html", response_class=FileResponse)
+def serve_market_page():
+    path = BASE_DIR / "market.html"
+    return FileResponse(path if path.exists() else "market.html")
+
+@app.get("/career-fit.html", response_class=FileResponse)
+def serve_career_fit_page():
+    path = BASE_DIR / "career-fit.html"
+    return FileResponse(path if path.exists() else "career-fit.html")
 
 @app.get("/roles")
 def get_roles() -> Dict[str, Any]:
