@@ -32,16 +32,25 @@ def build_combined_dataset():
     print("            CAREERLENS COMBINED DATASET BUILD PIPELINE                    ")
     print("==========================================================================")
 
-    # Step 1: Ensure baseline dataset is present
+    # Step 1: Ensure baseline dataset is present and valid
     raw_baseline_path = os.path.join("data", "raw", "jobs_raw.json")
-    if not os.path.exists(raw_baseline_path):
-        print("1. Baseline dataset data/raw/jobs_raw.json not found. Fetching from Job Market API...")
-        ingest_full_data()
-    else:
-        print(f"1. Found baseline dataset at {raw_baseline_path}.")
+    baseline_valid = False
 
-    with open(raw_baseline_path, "r", encoding="utf-8") as f:
-        baseline_raw = json.load(f)
+    if os.path.exists(raw_baseline_path) and os.path.getsize(raw_baseline_path) > 1000:
+        try:
+            with open(raw_baseline_path, "r", encoding="utf-8") as f:
+                baseline_raw = json.load(f)
+            if isinstance(baseline_raw, dict) and "data" in baseline_raw and len(baseline_raw["data"]) > 0:
+                baseline_valid = True
+                print(f"1. Found valid baseline dataset at {raw_baseline_path}.")
+        except Exception:
+            baseline_valid = False
+
+    if not baseline_valid:
+        print("1. Baseline dataset missing or invalid. Downloading from Job Market API with retries...")
+        ingest_full_data()
+        with open(raw_baseline_path, "r", encoding="utf-8") as f:
+            baseline_raw = json.load(f)
 
     baseline_records = baseline_raw.get("data", baseline_raw)
     df_baseline = pd.DataFrame(baseline_records)
