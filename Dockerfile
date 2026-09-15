@@ -19,13 +19,12 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 
 # Copy application source code, helper scripts, and static frontend files
 COPY src/ ./src/
-COPY download_full.py ./
+COPY download_full.py build_dataset.py ./
 COPY careerlens.html market.html career-fit.html ./
 
-# Create data directories and generate dataset inside the image during Docker build
+# Create data directories and generate combined dataset inside the image during Docker build
 RUN mkdir -p data/raw data/processed && \
-    python download_full.py && \
-    python -m src.preprocessing
+    python build_dataset.py
 
 # Expose FastAPI server port
 EXPOSE 8000

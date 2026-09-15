@@ -42,7 +42,7 @@ def load_jobs_data(csv_path: Optional[Union[str, Path]] = None) -> pd.DataFrame:
     path = Path(csv_path) if csv_path else DEFAULT_CSV_PATH
     if not path.is_file():
         raise FileNotFoundError(f"Jobs CSV dataset not found at: {path}")
-    return pd.read_csv(path)
+    return pd.read_csv(path, low_memory=False)
 
 
 def get_available_roles(csv_path: Optional[Union[str, Path]] = None) -> List[Dict[str, Any]]:

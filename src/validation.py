@@ -72,14 +72,14 @@ def validate_dataset(file_path="data/processed/jobs_clean.csv"):
     })
     if not schema_passed: all_passed = False
 
-    # --- CHECK 2: Row Count Match ---
-    row_passed = (actual_rows == EXPECTED_ROW_COUNT)
+    # --- CHECK 2: Row Count Verification ---
+    row_passed = (actual_rows >= EXPECTED_ROW_COUNT)
     validation_results.append({
         "Check Name": "2. Row Count Verification",
-        "Expected": f"{EXPECTED_ROW_COUNT:,} rows",
+        "Expected": f">= {EXPECTED_ROW_COUNT:,} rows",
         "Found": f"{actual_rows:,} rows",
         "Status": "PASS" if row_passed else "FAIL",
-        "Notes": "100% row match with raw dataset" if row_passed else f"Row count mismatch ({actual_rows} vs {EXPECTED_ROW_COUNT})"
+        "Notes": "Row count meets or exceeds baseline dataset" if row_passed else f"Row count mismatch ({actual_rows} vs {EXPECTED_ROW_COUNT})"
     })
     if not row_passed: all_passed = False
 

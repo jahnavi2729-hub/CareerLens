@@ -98,3 +98,26 @@ jobs:
 
           print("Dataset download and basic validation: PASS")
           PY
+
+      - name: Run Incremental Ingestion Pipeline (Naukri Adapter & SQL MERGE)
+        env:
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+        run: |
+          if [ ! -f "data/raw/naukri_apify_ci.json" ]; then
+            echo "Downloaded dataset file data/raw/naukri_apify_ci.json not found. Skipping ingestion."
+            exit 0
+          fi
+
+          echo "Running Naukri Adapter and Incremental SQL Ingestion Pipeline..."
+          python -m src.ingest_naukri_incremental data/raw/naukri_apify_ci.json
+
+      - name: Build Combined Dataset & Generate jobs_clean.csv
+        run: |
+          if [ ! -f "data/raw/naukri_apify_ci.json" ]; then
+            echo "Downloaded dataset file data/raw/naukri_apify_ci.json not found. Skipping build."
+            exit 0
+          fi
+
+          echo "Executing build_dataset.py to generate combined jobs_clean.csv..."
+          python build_dataset.py
+
